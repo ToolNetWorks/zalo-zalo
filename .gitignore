@@ -1,0 +1,14 @@
+node_modules/
+.env
+data/
+sessions/
+credentials*
+*.log
+
+.run/
+.tools/
+qr-login.png
+server.mjs.before-qr
+*.backup-*
+public/*.before-qr
+public/*.backup-*

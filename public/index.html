@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="vi"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Recovery Center</title>
+<style>
+:root{font-family:system-ui,-apple-system,sans-serif;color-scheme:dark}*{box-sizing:border-box}
+body{background:#080f1f;color:#f6f8fe;margin:0;min-height:100vh}
+header{padding:22px max(20px,calc((100vw - 850px)/2));border-bottom:1px solid #27334a;font-size:20px;font-weight:800}
+header span{color:#5a9bff}main{max-width:850px;margin:0 auto;padding:48px 20px}
+h1{font-size:clamp(28px,5vw,39px);margin:0 0 12px}h2{font-size:22px;margin:6px 0 10px}
+p,.muted{color:#aab6cd;line-height:1.6}button,input{font:inherit}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:26px}
+.card{border:1px solid #31415d;background:#172238;border-radius:18px;color:inherit;padding:23px;text-align:left;cursor:pointer}
+.card strong{display:block;margin:10px 0 8px;font-size:21px}.card small{color:#aab6cd}
+.card:disabled{opacity:.55;cursor:not-allowed}.mark{display:inline-grid;place-items:center;width:54px;height:54px;border-radius:15px;background:#266aff;color:white;font-size:28px;font-weight:800}
+.mark.fb{background:#166be4}.mark.tg{background:#239ace}
+.btn{padding:13px 19px;color:white;border:0;background:#267eff;border-radius:12px;cursor:pointer;font-weight:700}
+.back{display:inline-block;border:0;background:transparent;color:#93bcff;padding:0;margin:0 0 24px;cursor:pointer}
+.panel{background:#151f32;border:1px solid #2d3d58;border-radius:18px;padding:21px;margin-top:22px}
+.qr-area{text-align:center}.qr-area img{width:235px;max-width:100%;padding:12px;background:white;border-radius:12px;margin:12px auto}
+.status{color:#9fcdff;margin:14px 0}img[hidden],section[hidden]{display:none!important}
+.row{display:flex;gap:14px;align-items:center}.photo{width:65px;height:65px;border-radius:50%;object-fit:cover;background:#243b61}
+.info{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:17px}.info div{padding:10px;background:#1d2b42;border-radius:10px;overflow-wrap:anywhere}
+.info small{display:block;color:#aab6cd;margin-bottom:4px}
+input{width:100%;background:#121c30;border:1px solid #3b4e69;border-radius:12px;color:white;padding:14px;margin:14px 0}
+.person{width:100%;display:flex;gap:13px;align-items:center;color:white;background:transparent;border:0;border-bottom:1px solid #2c3b52;text-align:left;padding:12px 0;cursor:pointer}
+.person .photo{width:46px;height:46px}.person span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}.person small{display:block;color:#aab6cd;margin-top:4px}
+.notice{border:1px solid #6b5837;background:#272319;border-radius:12px;padding:15px;color:#ead4a5;margin-top:20px}
+@media(max-width:540px){main{padding:36px 18px}.info{grid-template-columns:1fr}.panel{padding:18px}}
+</style></head><body>
+<header>RECOVERY <span>CENTER</span></header><main>
+<section id="platform">
+<h1>Chọn nền tảng</h1><p>Chọn tài khoản cần kiểm tra khả năng khôi phục tin nhắn.</p>
+<div class="cards">
+<button class="card" id="choose-zalo"><span class="mark">Z</span><strong>Zalo →</strong><small>Đăng nhập qua QR</small></button>
+<button class="card" disabled><span class="mark fb">f</span><strong>Facebook</strong><small>Chưa tích hợp</small></button>
+<button class="card" disabled><span class="mark tg">➤</span><strong>Telegram</strong><small>Chưa tích hợp</small></button>
+</div></section>
+<section id="login" hidden>
+<button class="back" id="back-login">← Chọn nền tảng</button>
+<h1>Đăng nhập Zalo</h1><p>Quét mã QR &amp; Xác nhận trên ứng dụng Zalo</p>
+<div class="panel qr-area"><img id="real-qr" alt="Mã QR Zalo" hidden>
+<p id="qr-message">Đang kiểm tra...</p><div class="status" id="qr-status">Chưa xác thực</div>
+<button class="btn" id="check">Tạo QR / Thử lại</button></div>
+<p class="muted">Bằng cách tiếp tục, bạn đồng ý với Điều khoản dịch vụ của chúng tôi và xác nhận rằng bạn đã đọc hiểu Chính sách quyền riêng tư của chúng tôi.</p>
+</section>
+<section id="dashboard" hidden>
+<button class="back" id="back-dashboard">← Chọn nền tảng</button>
+<h1>Dashboard Zalo</h1><p>Chọn người trong danh bạ để kiểm tra tin nhắn.</p>
+<div class="panel"><div class="row"><img class="photo" id="me-avatar" alt="Avatar" hidden><div><h2 id="me-name">Đang tải hồ sơ...</h2><span class="muted" id="me-sub"></span></div></div>
+<div class="info"><div><small>Zalo ID</small><b id="me-id">—</b></div><div><small>Tên người dùng</small><b id="me-username">—</b></div><div><small>Số điện thoại (nếu có)</small><b id="me-phone">—</b></div><div><small>Danh bạ</small><b id="friends-count">Đang tải...</b></div></div></div>
+<div class="panel" id="frequent-panel">
+<h2>Người liên lạc thường xuyên nhất</h2>
+<p class="muted">Top 10 theo số tin nhắn thực tế đã ghi nhận trong 30 ngày. Có thể thiếu lịch sử cũ.</p>
+<button id="sync-frequent" class="btn" type="button">Đồng bộ hoạt động Zalo</button>
+<p class="muted" id="frequent-status">Chưa phân tích lịch sử liên lạc.</p>
+<div id="frequent-list"></div>
+</div>
+<div class="panel"><h2>Danh bạ Zalo</h2><input id="search" placeholder="Tìm tên bạn bè..." autocomplete="off">
+<p class="muted" id="friends-status">Đang tải danh bạ thật...</p><div id="friends"></div></div>
+</section>
+<section id="recovery" hidden>
+<button class="back" id="back-recovery">← Danh bạ</button><h1>Kiểm tra tin nhắn</h1>
+<div class="panel"><div class="row"><img id="selected-avatar" class="photo" alt="Avatar" hidden><div><h2 id="selected-name"></h2><p class="muted" id="selected-id"></p></div></div>
+<p>Đã chọn người này để kiểm tra khả năng khôi phục tin nhắn đã xóa và thu hồi.</p>
+<button class="btn" id="start-recovery">Kiểm tra khôi phục</button>
+<div class="notice" id="recovery-note" hidden>Engine khôi phục chưa được tích hợp. Chưa đọc hoặc khôi phục tin nhắn nào.</div></div>
+</section>
+</main><script src="/qr-client.js"></script></body></html>

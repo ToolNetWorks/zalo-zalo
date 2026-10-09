@@ -1,0 +1,12 @@
+{
+  "name": "zalo-qr-recovery",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "zca-js": "2.2.0"
+  }
+}
