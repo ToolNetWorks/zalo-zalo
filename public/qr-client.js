@@ -128,6 +128,9 @@ function selectFriend(friend) {
   $('selected-name').textContent=friend.name;
   $('selected-id').textContent='Zalo ID: '+friend.id;
   $('recovery-note').hidden=true;
+  $('chat-status').textContent='Chưa đọc lịch sử với liên hệ này.';
+  $('chat-messages').replaceChildren();
+  clearInterval(chatPollTimer);
   image('selected-avatar',friend.avatar);
   show('recovery');
 }
@@ -144,7 +147,62 @@ $('choose-zalo').onclick=async()=>{
 $('check').onclick=startQR;
 $('back-login').onclick=()=>{clearInterval(timer);show('platform');};
 $('back-dashboard').onclick=()=>show('platform');
-$('back-recovery').onclick=()=>show('dashboard');
-$('start-recovery').onclick=()=>{$('recovery-note').hidden=false;};
+$('back-recovery').onclick=()=>{clearInterval(chatPollTimer);show('dashboard');};
+
+// RECOVERY_CHAT_HISTORY_V1: render ONLY actual messages returned by backend.
+let chatPollTimer = null;
+async function loadSelectedChat() {
+  if (!selected) return;
+  const id = selected.id;
+  try {
+    const d = await json('/api/zalo/chat?id='+encodeURIComponent(id));
+    if (!selected || selected.id !== id) return;
+    const labels = {
+      WAITING: 'Đang yêu cầu lịch sử từ Zalo...',
+      HISTORY_RECEIVED: 'Đã nhận phản hồi lịch sử từ Zalo.',
+      NO_HISTORY_RESPONSE: 'Không nhận được dữ liệu lịch sử từ Zalo.',
+      UNAVAILABLE: 'Không thể yêu cầu lịch sử trên kết nối hiện tại.',
+      DISCONNECTED: 'Mất kết nối Zalo.'
+    };
+    $('chat-status').textContent=(labels[d.status] || d.status)+
+      ' Tin văn bản tìm thấy: '+d.messages.length+'. Giới hạn 250 tin, chỉ lưu trên RAM VPS.';
+    const list = $('chat-messages'); list.replaceChildren();
+    if (d.messages.length === 0) {
+      const p=document.createElement('p');p.className='muted';
+      p.textContent='Chưa thấy tin nhắn văn bản phù hợp. Đây không phải bằng chứng tin đã xóa không thể khôi phục.';
+      list.append(p);
+    }
+    for (const m of d.messages) {
+      const item=document.createElement('div');item.className='chat-line'+(m.mine?' mine':'');
+      const body=document.createElement('div');body.textContent=m.text;
+      const meta=document.createElement('small');meta.className='chat-meta';
+      const time=m.timestamp ? new Date(m.timestamp).toLocaleString('vi-VN') : 'Không rõ thời gian';
+      meta.textContent=(m.mine?'Bạn':'Người liên hệ')+' · '+time+' · '+(m.source==='history'?'Lịch sử Zalo':'Tin nhận mới');
+      item.append(body,meta);list.append(item);
+    }
+  } catch(e) {
+    $('chat-status').textContent='Không tải được lịch sử: '+e.message;
+  }
+}
+$('start-recovery').onclick=async()=>{
+  if(!selected) return;
+  const id=selected.id;
+  $('start-recovery').disabled=true;
+  $('chat-status').textContent='Đang yêu cầu Zalo trả dữ liệu...';
+  $('chat-messages').replaceChildren();
+  try {
+    await json('/api/zalo/chat/sync?id='+encodeURIComponent(id),{
+      method:'POST',headers:{'Content-Type':'application/json'},body:'{}'
+    });
+    await loadSelectedChat();
+    clearInterval(chatPollTimer);
+    chatPollTimer=setInterval(()=>{
+      if (!$('recovery').hidden && selected?.id===id) loadSelectedChat();
+    },3000);
+  } catch(e) {
+    $('chat-status').textContent='Không đọc được lịch sử: '+e.message;
+  } finally { $('start-recovery').disabled=false; }
+};
+
 $('search').oninput=renderFriends;
 show('platform');

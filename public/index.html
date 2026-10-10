@@ -28,6 +28,10 @@ input{width:100%;background:#121c30;border:1px solid #3b4e69;border-radius:12px;
 .person .photo{width:46px;height:46px}.person span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}.person small{display:block;color:#aab6cd;margin-top:4px}
 .notice{border:1px solid #6b5837;background:#272319;border-radius:12px;padding:15px;color:#ead4a5;margin-top:20px}
 @media(max-width:540px){main{padding:36px 18px}.info{grid-template-columns:1fr}.panel{padding:18px}}
+
+.chat-line{background:#202c44;border:1px solid #2e405e;border-radius:14px;padding:11px 14px;margin:10px 0;max-width:92%;white-space:pre-wrap;overflow-wrap:anywhere}
+.chat-line.mine{background:#17467f;margin-left:auto}
+.chat-meta{display:block;font-size:12px;color:#b7c7df;margin-top:7px}
 </style></head><body>
 <header>RECOVERY <span>CENTER</span></header><main>
 <section id="platform">
@@ -64,7 +68,15 @@ input{width:100%;background:#121c30;border:1px solid #3b4e69;border-radius:12px;
 <button class="back" id="back-recovery">← Danh bạ</button><h1>Kiểm tra tin nhắn</h1>
 <div class="panel"><div class="row"><img id="selected-avatar" class="photo" alt="Avatar" hidden><div><h2 id="selected-name"></h2><p class="muted" id="selected-id"></p></div></div>
 <p>Đã chọn người này để kiểm tra khả năng khôi phục tin nhắn đã xóa và thu hồi.</p>
-<button class="btn" id="start-recovery">Kiểm tra khôi phục</button>
+<button class="btn" id="start-recovery">Đọc lịch sử với người này</button>
+<div class="panel" id="chat-history-panel">
+<h2>Lịch sử tin nhắn còn truy cập được</h2>
+<p class="muted">Chỉ hiển thị tin văn bản thật do Zalo trả về sau khi kết nối.
+Không đồng nghĩa với khôi phục được tin đã xóa hoặc thu hồi trước đây.</p>
+<p class="muted" id="chat-status">Chưa đọc lịch sử với liên hệ này.</p>
+<div id="chat-messages" aria-live="polite"></div>
+</div>
+
 <div class="notice" id="recovery-note" hidden>Engine khôi phục chưa được tích hợp. Chưa đọc hoặc khôi phục tin nhắn nào.</div></div>
 </section>
 </main><script src="/qr-client.js"></script></body></html>

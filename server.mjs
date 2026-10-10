@@ -125,6 +125,51 @@ async function activityCheckOwner() {
     activitySaveSoon();
   }
 }
+
+// RECOVERY_CHAT_HISTORY_V1 — message texts from actual accessible Zalo events.
+// Only text for the ONE selected friend, kept in memory; no content written to disk.
+let chatSelected = '';
+let chatSyncStatus = 'IDLE';
+let chatCheckedAt = null;
+let chatSequence = 0;
+const chatMessages = new Map();
+const CHAT_MAX = 250;
+function captureChatMessage(message, source) {
+  if (!chatSelected || message?.type !== ThreadType.User) return;
+  if (String(message.threadId || '') !== chatSelected) return;
+  const d = message.data || {};
+  if (typeof d.content !== 'string' || !d.content.trim()) return;
+  const id = String(d.realMsgId || d.msgId || d.cliMsgId || '');
+  if (!id || id.length > 160) return;
+  let timestamp = Number(d.ts);
+  if (timestamp > 0 && timestamp < 1e11) timestamp *= 1000;
+  if (!Number.isFinite(timestamp) || timestamp < 0) timestamp = null;
+  if (!chatMessages.has(id)) {
+    chatMessages.set(id, {
+      id, text: d.content.slice(0, 10000),
+      timestamp, mine: Boolean(message.isSelf), source
+    });
+    while (chatMessages.size > CHAT_MAX)
+      chatMessages.delete(chatMessages.keys().next().value);
+  }
+}
+function chatHistoryReceived() {
+  if (!chatSelected) return;
+  chatCheckedAt = Date.now();
+  chatSyncStatus = 'HISTORY_RECEIVED';
+}
+function chatView() {
+  return {
+    status: chatSyncStatus,
+    selected: chatSelected,
+    checkedAt: chatCheckedAt,
+    storedOnlyInMemory: true,
+    limitedTo: CHAT_MAX,
+    messages: [...chatMessages.values()].sort((a,b) =>
+      (a.timestamp || 0)-(b.timestamp || 0))
+  };
+}
+
 function activityAddMessage(message) {
   if (!message || !message.data) return;
   const uid = String(message.threadId || '');
@@ -149,12 +194,13 @@ function activityStartListener() {
   let historyReceived = false;
   const listener = api.listener;
   listener.on('message', msg => {
-    if (msg?.type === ThreadType.User) activityAddMessage(msg);
+    if (msg?.type === ThreadType.User) { activityAddMessage(msg); captureChatMessage(msg, 'live'); }
   });
   listener.on('old_messages', (messages, type) => {
     if (type !== ThreadType.User || !Array.isArray(messages)) return;
     historyReceived = true;
-    for (const msg of messages.slice(0, 30000)) activityAddMessage(msg);
+    for (const msg of messages.slice(0, 30000)) { activityAddMessage(msg); captureChatMessage(msg, 'history'); }
+    chatHistoryReceived();
     activityLastSync = Date.now();
     activityState = 'READY';
     activitySaveSoon();
@@ -176,6 +222,7 @@ function activityStartListener() {
   });
   listener.on('closed', () => {
     activityState = 'DISCONNECTED';
+    if (chatSelected) chatSyncStatus = 'DISCONNECTED';
     activityError = 'Kết nối Zalo đã đóng; dữ liệu đã ghi nhận vẫn được giữ';
     activityListenerStarted = false;
   });
@@ -358,6 +405,54 @@ http.createServer((req, res) => {
     activityCheckOwner()
       .then(() => {activityStartListener();sendJSON(res, 202, {status:activityState});})
       .catch(() => sendJSON(res, 502, {error:'ACTIVITY_SYNC_FAILED'}));
+    return;
+  }
+
+
+  // Read accessible messages for one verified friend only (never invent recovered text).
+  if (req.method === 'GET' && req.url.startsWith('/api/zalo/chat?')) {
+    if (!api) return sendJSON(res, 401, {error:'ZALO_NOT_AUTHENTICATED'});
+    const u = new URL(req.url, 'http://localhost');
+    const id = u.searchParams.get('id') || '';
+    if (!id || id !== chatSelected) return sendJSON(res, 404, {error:'CHAT_NOT_SELECTED'});
+    return sendJSON(res, 200, chatView());
+  }
+  if (req.method === 'POST' && req.url.startsWith('/api/zalo/chat/sync?')) {
+    if (!api) return sendJSON(res, 401, {error:'ZALO_NOT_AUTHENTICATED'});
+    let sameOrigin = true;
+    if (req.headers.origin) {
+      try {sameOrigin = new URL(req.headers.origin).host === req.headers.host;}
+      catch {sameOrigin = false;}
+    }
+    if (!sameOrigin || req.headers['sec-fetch-site'] === 'cross-site' ||
+        (req.headers['content-type'] || '').split(';')[0] !== 'application/json') {
+      return sendJSON(res, 403, {error:'FORBIDDEN'});
+    }
+    const id = new URL(req.url, 'http://localhost').searchParams.get('id') || '';
+    if (!/^[a-zA-Z0-9_-]{1,100}$/.test(id))
+      return sendJSON(res, 400, {error:'INVALID_FRIEND_ID'});
+    getContacts().then(contacts => {
+      if (!contacts.some(item => item.id === id))
+        return sendJSON(res, 404, {error:'FRIEND_NOT_FOUND'});
+      const seq = ++chatSequence;
+      chatSelected = id;
+      chatMessages.clear();
+      chatCheckedAt = null;
+      chatSyncStatus = 'WAITING';
+      const wasRunning = activityListenerStarted;
+      activityStartListener();
+      if (wasRunning && ['READY','LIVE_ONLY','SYNCING'].includes(activityState)) {
+        try { api.listener.requestOldMessages(ThreadType.User); }
+        catch { chatSyncStatus = 'UNAVAILABLE'; }
+      }
+      if (activityState === 'ERROR' || activityState === 'DISCONNECTED')
+        chatSyncStatus = 'UNAVAILABLE';
+      setTimeout(() => {
+        if (chatSequence === seq && chatSyncStatus === 'WAITING')
+          chatSyncStatus = 'NO_HISTORY_RESPONSE';
+      }, 26000);
+      sendJSON(res, 202, {status:chatSyncStatus, selected:id});
+    }).catch(() => sendJSON(res, 502, {error:'CONTACTS_UNAVAILABLE'}));
     return;
   }
 
